@@ -1,6 +1,3 @@
-//* Mapbox 'Access Tokens':
-//* pk.eyJ1IjoidGhvbWFzLW1heW5hcmQiLCJhIjoiY2t3bDJpdjNsMDJ2ZTJubXI5cmk1NzNuaiJ9.S6LONB4wZIPtlddgLOABMA
-
 //! Mapbox Geocoding API:
 //! Accepts an address and gives us back the longitude / latitude of that address.
 //? https://docs.mapbox.com/api/search/geocoding/
@@ -10,34 +7,79 @@
 //! information about when the satellite will next be visible over those coordinates.
 //? https://satellites.fly.dev/
 
+const inputApiKey = document.querySelector("#api-key");
+const inputAddress = document.querySelector("#address");
+const inputNorad = document.querySelector("#norad");
+const buttonSearch = document.querySelector("#search");
+const content = $(".content");
+
+let apikey;
+let address;
+let norad;
+
 async function main() {
 	//? Fetch one story from Hacker News
-	const httpResponse = await fetch(
+	const httpResponseMapbox = await fetch(
 		//? encodeURI() replaces special characters
 		encodeURI(
-			"https://api.mapbox.com/geocoding/v5/mapbox.places/Los%20Angeles.json?access_token=pk.eyJ1IjoidGhvbWFzLW1heW5hcmQiLCJhIjoiY2t3bDJpdjNsMDJ2ZTJubXI5cmk1NzNuaiJ9.S6LONB4wZIPtlddgLOABMA"
+			`https://api.mapbox.com/geocoding/v5/mapbox.places/${address}.json?access_token=${apikey}`
 		)
 	);
 
-	const data = await httpResponse.json();
+	const dataMapbox = await httpResponseMapbox.json();
+	const latitude = dataMapbox.features[0].center[1];
+	const longitude = dataMapbox.features[0].center[0];
 
-	console.log(data);
-	console.log("Longitude:", data.features[0].center[0]);
-	console.log("Latitude:", data.features[0].center[1]);
+	const httpResponseSatellites = await fetch(
+		//? encodeURI() replaces special characters
+		encodeURI(
+			`https://satellites.fly.dev/passes/${norad}?lat=${latitude}&lon=${longitude}`
+		)
+	);
 
-	//? Put the story on the DOM
-	// const content = document.querySelector("#content");
-	// const storyTitle = document.createElement("div");
-	// storyTitle.className = "story";
-	// storyTitle.innerText = data.title;
-	// content.appendChild(storyTitle);
+	const dataSatellites = await httpResponseSatellites.json();
 
-	//? Load comments for a story and put them on the DOM
-	// await loadComments(data, 0);
+	console.log(dataSatellites);
+
+	for (data of dataSatellites) {
+		if (data["visible"] === true) {
+			console.log(data);
+			return data["culmination"]["utc_datetime"];
+		}
+	}
 }
 
-main();
-// Longitude: 4.683971 Latitude: 51.825221
+buttonSearch.addEventListener("click", async function () {
+	apikey = inputApiKey.value;
+	address = inputAddress.value;
+	norad = inputNorad.value;
+
+	const nextTimeVisible = await main();
+
+	const newDiv = `<div class="section">
+						<div class="column">
+							<div class="row">
+								NORAD (Satellite ID) <b>${norad}</b> will next be visible on:
+							</div>
+							<h2>${moment(nextTimeVisible).format("MMMM Do YYYY, h:mm:ss a [| GMT] Z")}</h2>
+							
+							<div class="row">
+								<b>Over:</b>
+							</div>
+							<div class="title">
+								<h2>${address}</h2>
+							</div>
+						</div>
+					</div>;`;
+
+	content.append(newDiv);
+
+	// alert(
+	// 	`NORAD (Satellite ID) ${norad} will next be visible on:\n
+	// 	${moment(nextTimeVisible).format("MMMM Do YYYY, h:mm:ss a [| GMT] Z")}`
+	// );
+	// alert(nextTimeVisible);
+});
 
 //! ==================================================================================================
 //! # A basic forward geocoding request
