@@ -87,3 +87,13 @@ button:hover {
 	padding: 20px;
 	align-items: center;
 }
+
+@media only screen and (max-width: 600px) {
+	body {
+		width: 600px;
+	}
+
+	/* .content {
+		background-color: black;
+	} */
+}

@@ -33,7 +33,7 @@ async function main() {
 	const httpResponseSatellites = await fetch(
 		//? encodeURI() replaces special characters
 		encodeURI(
-			`https://satellites.fly.dev/passes/${norad}?lat=${latitude}&lon=${longitude}`
+			`https://satellites.fly.dev/passes/${norad}?lat=${latitude}&lon=${longitude}&days=15&visible_only=true`
 		)
 	);
 
@@ -41,11 +41,21 @@ async function main() {
 
 	console.log(dataSatellites);
 
+	let isVisible = false;
+
 	for (data of dataSatellites) {
 		if (data["visible"] === true) {
-			console.log(data);
-			return data["culmination"]["utc_datetime"];
+			isVisible = true;
+			return [
+				data["culmination"]["utc_datetime"],
+				data["rise"]["utc_datetime"],
+				data["set"]["utc_datetime"],
+			];
 		}
+	}
+
+	if (isVisible === false) {
+		return [];
 	}
 }
 
@@ -55,13 +65,25 @@ buttonSearch.addEventListener("click", async function () {
 	norad = inputNorad.value;
 
 	const nextTimeVisible = await main();
-
-	const newDiv = `<div class="section">
+	console.log(nextTimeVisible.length);
+	const visibleDiv = `<div class="section">
 						<div class="column">
 							<div class="row">
-								NORAD (Satellite ID) <b>${norad}</b> will next be visible on:
+								NORAD (Satellite ID) <b>&nbsp; ${norad} &nbsp;</b> will next rise and be visible on:
 							</div>
-							<h2>${moment(nextTimeVisible).format("MMMM Do YYYY, h:mm:ss a [| GMT] Z")}</h2>
+							<h2>${moment(nextTimeVisible[1]).format(
+								"MMMM Do YYYY, h:mm:ss a [| GMT] Z"
+							)}</h2>
+
+							<div class="row">
+							It will culminate at:
+						</div>
+						<h2>${moment(nextTimeVisible[0]).format("h:mm:ss a [| GMT] Z")}</h2>
+
+						<div class="row">
+						And it will set at:
+					</div>
+					<h2>${moment(nextTimeVisible[2]).format("h:mm:ss a [| GMT] Z")}</h2>
 							
 							<div class="row">
 								<b>Over:</b>
@@ -70,15 +92,18 @@ buttonSearch.addEventListener("click", async function () {
 								<h2>${address}</h2>
 							</div>
 						</div>
-					</div>;`;
+					</div>`;
 
-	content.append(newDiv);
+	const notVisibleDiv = `<div class="section">
+								<div class="row">
+									NORAD (Satellite ID) <b>&nbsp; ${norad} &nbsp;</b> will not be visible in the next 15 days.
+								</div>`;
 
-	// alert(
-	// 	`NORAD (Satellite ID) ${norad} will next be visible on:\n
-	// 	${moment(nextTimeVisible).format("MMMM Do YYYY, h:mm:ss a [| GMT] Z")}`
-	// );
-	// alert(nextTimeVisible);
+	if (nextTimeVisible.length === 0) {
+		content.append(notVisibleDiv);
+	} else {
+		content.append(visibleDiv);
+	}
 });
 
 //! ==================================================================================================
